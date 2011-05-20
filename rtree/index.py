@@ -513,21 +513,22 @@ class Index(object):
 
     # Added by MDA
     def hausdorff(self, other_index):
+        id1 = 0
+        id2 = 0
+        p_id1 = ctypes.pointer(ctypes.c_uint64(id1))
+        p_id2 = ctypes.pointer(ctypes.c_uint64(id2))
+        mode = 0
         haus_dist = core.rt.Index_Hausdorff(self.handle,
-                                            other_index.handle)
+                                            other_index.handle,
+                                            p_id1,
+                                            p_id2,
+                                            mode)
 
         #haus_dist = ctypes.cast(haus_dist, ctypes.POINTER(ctypes.c_double))
-        return haus_dist
-
-    #def hausdorff(self, other_index):
-    #    haus_dist = core.rt.Index_Hausdorff(self.handle,
-    #                                        other_index.handle,
-    #                                        p_point1,
-    #                                        p_point2,
-    #                                       )
-
-
-
+        #id1 = ctypes.cast(p_id1, ctypes.POINTER(ctypes.c_uint64))
+        #id2 = ctypes.cast(p_id2, ctypes.POINTER(ctypes.c_uint64))
+        #items = ctypes.cast(it, ctypes.POINTER(ctypes.c_uint64 * num_results))
+        return (haus_dist, p_id1, p_id2)
 
 
     def get_bounds(self, coordinate_interleaved=None):
