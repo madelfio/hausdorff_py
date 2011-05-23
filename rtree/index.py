@@ -512,12 +512,15 @@ class Index(object):
         return self._get_ids(it, p_num_results.contents.value)
 
     # Added by MDA
-    def hausdorff(self, other_index):
+    def hausdorff(self, other_index, mode):
         id1 = 0
         id2 = 0
         p_id1 = ctypes.pointer(ctypes.c_uint64(id1))
         p_id2 = ctypes.pointer(ctypes.c_uint64(id2))
-        mode = 0
+	#
+        # removed by Yi to allow LB computations
+	# mode = 0
+	#
         haus_dist = core.rt.Index_Hausdorff(self.handle,
                                             other_index.handle,
                                             p_id1,
