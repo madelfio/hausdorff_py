@@ -152,7 +152,7 @@ def RunExperiments(queryList, the_k_value, idx_list):
 
     for (q_f,q) in queryList:  
 
-        print "Iteration", i, ": Searching for closest point set to: %s" % (q_f,)
+        print "k value:", the_k_value, ": Searching for closest point set to: %s" % (q_f,)
 
 
 
@@ -212,11 +212,18 @@ for f in sys.argv[1:]:
 
 print "Done building DB index"
 
-min_k = 4
-max_k = 20
+min_k = 2
+max_k = 11
 
-num_runs = 5
+num_runs = 10
 queryList = []
+
+randseed = hash(datetime.datetime.now())
+print "randseed = ", randseed
+
+
+random.seed(randseed)
+
 
 for i in range(num_runs):
     queryid = random.randrange(0, idx_list.__len__(),1)
