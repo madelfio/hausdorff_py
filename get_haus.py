@@ -1,0 +1,28 @@
+import sys
+from rtree import Rtree, index
+
+if len(sys.argv) != 3:
+    print 'Usage: get_haus <pt_set_file_1> <pt_set_file_2>'
+    exit()
+
+
+p = index.Property()
+p.set_index_capacity(4)
+p.set_leaf_capacity(10)
+
+def get_points(filename):
+    for id, l in enumerate(open(filename)):
+        x,y = l.split()
+        x,y = float(x), float(y)
+        yield (id, (x,y,x,y), None)
+        
+
+idx1 = Rtree(get_points(sys.argv[1]), properties=p)
+idx2 = Rtree(get_points(sys.argv[2]), properties=p)
+
+print idx1.hausdorff(idx2,1)
+print idx2.hausdorff(idx1,1)
+print idx1.hausdorff(idx2,2)
+print idx2.hausdorff(idx1,2)
+print idx1.hausdorff(idx2,0)
+print idx2.hausdorff(idx1,0)
