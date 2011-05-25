@@ -144,15 +144,13 @@ def SimSearch(queryId, db, lbmode, k=1, inc=False):
 #random.seed(0)
 
 
-def RunExperiments(the_k_value, idx_list):
+def RunExperiments(queryList, the_k_value, idx_list):
 
     recList1 = []
     recList2 = []
     recList3 = []
 
-    for i in range(5):
-        queryid = random.randrange(0, idx_list.__len__(),1)
-        (q_f, q) = idx_list[queryid]    
+    for (q_f,q) in queryList:  
 
         print "Iteration", i, ": Searching for closest point set to: %s" % (q_f,)
 
@@ -190,9 +188,9 @@ def RunExperiments(the_k_value, idx_list):
 
     return (queryRec1, queryRec2, queryRec3)
 
-def Experiment1_k_Values(idx_list, min_k, max_k):
+def Experiment1_k_Values(queryList, idx_list, min_k, max_k):
     for k in range(min_k, max_k, min_k):
-        (rec1,rec2,rec3) = RunExperiments(k, idx_list)
+        (rec1,rec2,rec3) = RunExperiments(queryList, k, idx_list)
         print "k", k, rec1
         print "k", k, rec2
         print "k", k, rec3
@@ -217,7 +215,15 @@ print "Done building DB index"
 min_k = 4
 max_k = 20
 
-Experiment1_k_Values(idx_list, min_k, max_k)
+num_runs = 5
+queryList = []
+
+for i in range(num_runs):
+    queryid = random.randrange(0, idx_list.__len__(),1)
+    (q_f, q) = idx_list[queryid]  
+    queryList.append((q_f, q))
+
+Experiment1_k_Values(queryList, idx_list, min_k, max_k)
 
 
 
