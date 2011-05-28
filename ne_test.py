@@ -22,7 +22,7 @@ if len(sys.argv) < 2:
 def get_points(filename):
     for id, l in enumerate(open(filename)):
         x,y = l.split()
-        x,y = float(x), float(y)
+        x,y = 1000*float(x), 1000*float(y)
         yield (id, (x,y,x,y), None)
         
         
@@ -34,10 +34,8 @@ class Entry:
         self.pt_set = pt_set
         self.stage = stage
         
-        
-
     def __repr__(self):
-        return repr((self.fname, self.haus, self.lb1, self.lb2));
+        return repr((self.fname, self.haus, self.key, self.stage));
 
 class QueryStats:
     def __computeAverage__(self, statList):
@@ -65,9 +63,63 @@ class QueryStats:
             self.totalTime = totalTime.seconds*1000.0 + totalTime.microseconds/1000.0
             
     def __repr__(self):
-        return repr(("NumIterations", self.numIterations, "NumComps", self.numComps, "lbTime", self.lbTime, "totalTime", self.totalTime));
+        return ', '.join(("NumIterations: %3d" % (self.numIterations,),
+                          "NumComps: %3d" % (self.numComps,),
+                          "lbTime: %8.3f" % (self.lbTime,),
+                          "totalTime: %8.3f" % (self.totalTime,)))
+
+def compute_dists (stat_list_lb, stat_list_elb):
+    ratios = []
+    for (stat_lb, stat_elb) in zip(stat_list_lb, stat_list_elb):
+        ratios.append(((1.0 * stat_elb.numIterations /
+                        stat_lb.numIterations),
+                       (1.0 * stat_elb.numComps / stat_lb.numComps),
+                       (stat_elb.lbTime / stat_lb.lbTime),
+                       (stat_elb.totalTime / stat_lb.totalTime)))
+
+    # put ratios into bins
+    iter_hist = {}
+    comp_hist = {}
+    lb_time_hist = {}
+    total_time_hist = {}
+    bin_interval = 0.025
+
+    for iter, comp, lb_time, total_time in ratios:
+        iter_bin = round(iter/bin_interval)
+        comp_bin = round(comp/bin_interval)
+        lb_time_bin = round(lb_time/bin_interval)
+        total_time_bin = round(total_time/bin_interval)
+
+        iter_hist[iter_bin] = iter_hist.get(iter_bin, 0) + 1
+        comp_hist[comp_bin] = comp_hist.get(comp_bin, 0) + 1
+        lb_time_hist[lb_time_bin] = lb_time_hist.get(lb_time_bin, 0) + 1
+        total_time_hist[total_time_bin] = total_time_hist.get(total_time_bin, 0) + 1
+
+    scale = 200.0 / len(ratios) #(200 "X"s to represent the values
+    keys = comp_hist.keys()
+    for bin in range(min(keys), max(keys)):
+        print '%.3f: %s' % (bin_interval * bin,
+                            int(comp_hist.get(bin,0.0) * scale) * "X")
+    print
+
+    keys = lb_time_hist.keys()
+    for bin in range(min(keys), max(keys)):
+        print '%.3f: %s' % (bin_interval * bin,
+                            int(lb_time_hist.get(bin,0.0) * scale) * "X")
+    print
+
+    keys = total_time_hist.keys()
+    for bin in range(min(keys), max(keys)):
+        print '%.3f: %s' % (bin_interval * bin,
+                            int(total_time_hist.get(bin,0.0) * scale) * "X")
+    print
+
+        
+
 
 def floateq(a,b):
+    if a == b == 0:
+        return True
     val = (a-b)/b
     threshold = 0.0001
     if (val > threshold or val < -threshold): return False
@@ -75,7 +127,6 @@ def floateq(a,b):
 
 def CheckResults(list1, list2, list3):
     for i in range(list1.__len__()):
-        #print i, list1[i].haus, list2[i].haus
         if (not floateq(list1[i].haus,list2[i].haus)):
             return False
         if (not floateq(list1[i].haus,list3[i].haus)):
@@ -99,6 +150,9 @@ def SimSearch(queryId, db, lbmode, k=1, inc=False):
 
     lbtime = t2 - t1
 
+    if lbmode == -1:
+        return
+
     #entryList = sorted(entryList, key=lambda Entry: Entry.key)
     min_haus = 100000000
     numComps = 0
@@ -107,30 +161,30 @@ def SimSearch(queryId, db, lbmode, k=1, inc=False):
     while pq.__len__() > 0:
         numIterations = numIterations + 1
         (key, e) = heapq.heappop(pq)
-        if (e.stage is 1 and inc):
+        if (e.stage == 1 and inc):
             ta = datetime.datetime.now()
             (e.key, id1, id2) = max(q.hausdorff(e.pt_set, 2), e.pt_set.hausdorff(q, 2))
             tb = datetime.datetime.now()
             lbtime = lbtime + (tb-ta)
             e.stage = 2
             heapq.heappush(pq, (e.key, e))
-        elif (e.stage is 3):
+        elif (e.stage == 3):
             count = count+1
             resultList.append(e)
-            if (count is k): break
+            if (count == k): break
         else:
             (e.haus, id1, id2) = max(q.hausdorff(e.pt_set, 0), e.pt_set.hausdorff(q, 0))
             numComps = numComps +1
             e.stage = 3
         
             next_key = 100000000
-            if (pq.__len__() > 0):
+            if (len(pq) > 0):
                 (next_key, next_e) = pq[0]
   
             if (e.haus < next_key):
                 count = count+1
                 resultList.append(e)
-                if (count is k): break
+                if (count == k): break
             else:
                 heapq.heappush(pq, (e.haus, e))
 
@@ -150,23 +204,29 @@ def RunExperiments(queryList, the_k_value, idx_list):
     recList2 = []
     recList3 = []
 
-    for (q_f,q) in queryList:  
+    for queryid in queryList:  
 
-        print "k value:", the_k_value, ": Searching for closest point set to: %s" % (q_f,)
-
+        print "k value:", the_k_value, 
+        print ": Searching for closest point set to: %s" % (idx_list[queryid][0],)
 
 
         ### Initial Sorting Using LB  --- Mode = 1
+        SimSearch(queryid, idx_list, -1, the_k_value)
+
+        ### Initial Sorting Using LB  --- Mode = 1
         (rec1, res1) = SimSearch(queryid, idx_list, 1, the_k_value)
+        print rec1
         recList1.append(rec1) 
     
         ### Initial Sorting Using LB' --- Mode = 2
         (rec2, res2) = SimSearch(queryid, idx_list, 2, the_k_value)
+        print rec2
         recList2.append(rec2)
     
         ### Initial Sorting Using LB --- Mode = 1
         ### Re-sorting Using LB' --- Incremental
         (rec3, res3) = SimSearch(queryid, idx_list, 1, the_k_value, True)
+        print rec3
         recList3.append(rec3)
     
         if (not CheckResults(res1,res2,res3)):
@@ -185,6 +245,8 @@ def RunExperiments(queryList, the_k_value, idx_list):
 
     queryRec3 = QueryStats()
     queryRec3.__computeAverage__(recList3)
+
+    compute_dists(recList1, recList3)
 
     return (queryRec1, queryRec2, queryRec3)
 
@@ -213,9 +275,9 @@ for f in sys.argv[1:]:
 print "Done building DB index"
 
 min_k = 2
-max_k = 11
+max_k = 3
 
-num_runs = 10
+num_runs = 200 #len(idx_list)
 queryList = []
 
 randseed = hash(datetime.datetime.now())
@@ -224,42 +286,10 @@ print "randseed = ", randseed
 
 random.seed(randseed)
 
+queryList = random.sample(range(len(idx_list)), num_runs)
+#for i in range(num_runs):
+#    queryid = random.randrange(0, len(idx_list), 1)
+#    queryList.append(queryid)
 
-for i in range(num_runs):
-    queryid = random.randrange(0, idx_list.__len__(),1)
-    (q_f, q) = idx_list[queryid]  
-    queryList.append((q_f, q))
 
 Experiment1_k_Values(queryList, idx_list, min_k, max_k)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
