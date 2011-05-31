@@ -103,19 +103,19 @@ def compute_dists (stat_list_lb, stat_list_elb):
 
     scale = 100.0 / len(ratios) #(200 "X"s to represent the values)
     keys = comp_hist.keys()
-    for bin in range(min(keys), max(keys)):
+    for bin in range(int(min(keys)), int(max(keys))):
         print '%.3f: %s' % (bin_interval * bin,
                             int(comp_hist.get(bin,0.0) * scale) * "X")
     print
 
     keys = lb_time_hist.keys()
-    for bin in range(min(keys), max(keys)):
+    for bin in range(int(min(keys)), int(max(keys))):
         print '%.3f: %s' % (bin_interval * bin,
                             int(lb_time_hist.get(bin,0.0) * scale) * "X")
     print
 
     keys = total_time_hist.keys()
-    for bin in range(min(keys), max(keys)):
+    for bin in range(int(min(keys)), int(max(keys))):
         print '%.3f: %s' % (bin_interval * bin,
                             int(total_time_hist.get(bin,0.0) * scale) * "X")
     print
