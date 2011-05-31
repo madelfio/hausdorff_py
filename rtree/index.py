@@ -515,8 +515,10 @@ class Index(object):
     def hausdorff(self, other_index, mode):
         id1 = 0
         id2 = 0
+        traversal_cost = 0
         p_id1 = ctypes.pointer(ctypes.c_uint64(id1))
         p_id2 = ctypes.pointer(ctypes.c_uint64(id2))
+        p_traversal_cost = ctypes.pointer(ctypes.c_int(traversal_cost))
 	#
         # removed by Yi to allow LB computations
 	# mode = 0
@@ -525,14 +527,26 @@ class Index(object):
                                             other_index.handle,
                                             p_id1,
                                             p_id2,
+                                            p_traversal_cost,
                                             mode)
 
         #haus_dist = ctypes.cast(haus_dist, ctypes.POINTER(ctypes.c_double))
         #id1 = ctypes.cast(p_id1, ctypes.POINTER(ctypes.c_uint64))
         #id2 = ctypes.cast(p_id2, ctypes.POINTER(ctypes.c_uint64))
         #items = ctypes.cast(it, ctypes.POINTER(ctypes.c_uint64 * num_results))
-        return (haus_dist, p_id1, p_id2)
 
+
+        
+        return (haus_dist, 
+                p_id1.contents.value, 
+                p_id2.contents.value,
+                p_traversal_cost.contents.value)
+
+    def select_mbrs(self, mbr_count):
+        return core.rt.Index_SelectMBRs(self.handle, mbr_count)
+
+    def clear_mbrs(self):
+        return core.rt.Index_ClearMBRs(self.handle)
 
     def get_bounds(self, coordinate_interleaved=None):
         """Returns the bounds of the index

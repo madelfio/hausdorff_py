@@ -42,30 +42,36 @@ class QueryStats:
         self.lbTime = 0
         self.totalTime = 0
         self.numIterations = 0
+        self.traversalCost = 0
         for s in statList:
             self.numComps += s.numComps
             self.lbTime += s.lbTime
             self.totalTime += s.totalTime
             self.numIterations += s.numIterations
+            self.traversalCost += s.traversalCost
             
         self.numComps /= len(statList)
         self.lbTime /= len(statList)
         self.totalTime /= len(statList)
         self.numIterations /= len(statList)
+        self.traversalCost /= len(statList)
 
-    def __init__(self, numIterations=0, numComps=0, lbTime=None, totalTime=None):
+    def __init__(self, numIterations=0, numComps=0, lbTime=None,
+                 totalTime=None, traversalCost=None):
         self.numComps = numComps
         self.numIterations = numIterations
         if (lbTime is not None):
             self.lbTime = lbTime.seconds*1000.0 + lbTime.microseconds/1000.0
         if (totalTime is not None):
             self.totalTime = totalTime.seconds*1000.0 + totalTime.microseconds/1000.0
+        self.traversalCost=traversalCost
             
     def __repr__(self):
         return ', '.join(("NumIterations: %3d" % (self.numIterations,),
                           "NumComps: %3d" % (self.numComps,),
                           "lbTime: %8.3f" % (self.lbTime,),
-                          "totalTime: %8.3f" % (self.totalTime,)))
+                          "totalTime: %8.3f" % (self.totalTime,),
+                          "traversalCost: %d" % (self.traversalCost,)))
 
 
 def compute_dists (stat_list_lb, stat_list_elb):
@@ -149,7 +155,7 @@ def init_priority_queue(query_id, lb_mode):
     pq = []
     for i in range(len(index_list)):
         if i != query_id:
-            (key, _, _) = compute_hausdorff_by_id(query_id, i, lb_mode)
+            (key, _, _, _) = compute_hausdorff_by_id(query_id, i, lb_mode)
             heapq.heappush(pq, (key, Entry(index_list[i][0], 0, key, i)))
     return pq
 
@@ -168,13 +174,14 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
 
     numComps = 0
     numIterations = 0
+    traversalCost = 0
     while (len(pq) > 0 and len(resultList) < k):
         numIterations += 1
         (key, e) = heapq.heappop(pq)
 
         if (e.stage == 1 and inc):
             ta = datetime.datetime.now()
-            (e.key, _, _) = compute_hausdorff_by_id(query_id, e.pt_set_id, 2)
+            (e.key, _, _, _) = compute_hausdorff_by_id(query_id, e.pt_set_id, 2)
             tb = datetime.datetime.now()
             lbtime = lbtime + (tb-ta)
             e.stage = 2
@@ -182,14 +189,16 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
         elif (e.stage == 3):
             resultList.append(e)
         else:
-            (e.haus, _, _) = compute_hausdorff_by_id(query_id, e.pt_set_id, 0)
+            (e.haus, id1, _, tc) = compute_hausdorff_by_id(query_id, e.pt_set_id, 0)
             numComps += 1
             e.stage = 3
+            traversalCost += tc
             heapq.heappush(pq, (e.haus, e))
 
     t3 = datetime.datetime.now()
     
-    queryRec = QueryStats(numIterations, numComps, lbtime, t3-t1)
+    queryRec = QueryStats(numIterations, numComps, lbtime, t3-t1,
+                          traversalCost)
     return (queryRec,resultList)
 
 

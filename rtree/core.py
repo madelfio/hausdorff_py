@@ -197,9 +197,20 @@ rt.Index_Hausdorff.argtypes = [ ctypes.c_void_p,
                                 ctypes.c_void_p,
                                 ctypes.POINTER(ctypes.c_uint64),
                                 ctypes.POINTER(ctypes.c_uint64),
+                                ctypes.POINTER(ctypes.c_int),
                                 ctypes.c_int]
 rt.Index_Hausdorff.restype = ctypes.c_double
 rt.Index_Hausdorff.errcheck = check_value
+
+rt.Index_SelectMBRs.argtypes = [ ctypes.c_void_p,
+                                 ctypes.c_int]
+rt.Index_SelectMBRs.restype = None
+rt.Index_SelectMBRs.errcheck = check_void_done
+
+rt.Index_ClearMBRs.argtypes = [ctypes.c_void_p]
+rt.Index_ClearMBRs.restype = None
+rt.Index_ClearMBRs.errcheck = check_void_done
+
 
 #rt.Index_Hausdorff2.argtypes = [ ctypes.c_void_p,
 #                                ctypes.c_void_p]
