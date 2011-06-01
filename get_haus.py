@@ -20,6 +20,9 @@ def get_points(filename):
 idx1 = Rtree(get_points(sys.argv[1]), properties=p)
 idx2 = Rtree(get_points(sys.argv[2]), properties=p)
 
+idx1.select_mbrs(40);
+idx2.select_mbrs(40);
+
 print idx1.mhausdorff(idx2,1)
 print idx2.mhausdorff(idx1,1)
 print idx1.mhausdorff(idx2,2)
