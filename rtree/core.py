@@ -220,9 +220,9 @@ rt.Index_ClearMBRs.argtypes = [ctypes.c_void_p]
 rt.Index_ClearMBRs.restype = None
 rt.Index_ClearMBRs.errcheck = check_void_done
 
-rt.Index_UpdatePointCounts.argtypes = [ctypes.c_void_p]
-rt.Index_UpdatePointCounts.restype = None
-rt.Index_UpdatePointCounts.errcheck = check_void_done
+rt.Index_UpdatePointCount.argtypes = [ctypes.c_void_p]
+rt.Index_UpdatePointCount.restype = None
+rt.Index_UpdatePointCount.errcheck = check_void_done
 
 # End MDA Addition
 

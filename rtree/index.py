@@ -552,8 +552,8 @@ class Index(object):
     def clear_mbrs(self):
         return core.rt.Index_ClearMBRs(self.handle)
 
-    def update_point_counts(self):
-        return core.rt.Index_UpdatePointCounts(self.handl)
+    def update_point_count(self):
+        return core.rt.Index_UpdatePointCount(self.handl)
 
     # End MDA Addition
 
