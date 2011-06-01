@@ -519,10 +519,10 @@ class Index(object):
         p_id1 = ctypes.pointer(ctypes.c_uint64(id1))
         p_id2 = ctypes.pointer(ctypes.c_uint64(id2))
         p_traversal_cost = ctypes.pointer(ctypes.c_int(traversal_cost))
-	#
+        #
         # removed by Yi to allow LB computations
-	# mode = 0
-	#
+        # mode = 0
+        #
         haus_dist = core.rt.Index_Hausdorff(self.handle,
                                             other_index.handle,
                                             p_id1,

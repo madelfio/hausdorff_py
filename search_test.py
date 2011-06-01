@@ -9,6 +9,10 @@ if len(sys.argv) < 2:
     print "Usage: ne_test.py <query_pt_set_file> <db_pt_set_file_1> <...>"
     exit()
 
+DEFAULT_K = 2
+DEFAULT_MBR_CNT = 40
+
+
 p = index.Property()
 p.set_index_capacity(4)
 p.set_leaf_capacity(10)
@@ -88,7 +92,7 @@ def compute_dists (stat_list_lb, stat_list_elb):
     comp_hist = {}
     lb_time_hist = {}
     total_time_hist = {}
-    bin_interval = 0.05
+    bin_interval = 0.025
 
     for iter, comp, lb_time, total_time in ratios:
         iter_bin = round(iter/bin_interval)
@@ -101,18 +105,18 @@ def compute_dists (stat_list_lb, stat_list_elb):
         lb_time_hist[lb_time_bin] = lb_time_hist.get(lb_time_bin, 0) + 1
         total_time_hist[total_time_bin] = total_time_hist.get(total_time_bin, 0) + 1
 
-    scale = 100.0 / len(ratios) #(200 "X"s to represent the values)
+    scale = 200.0 / len(ratios) #(200 "X"s to represent the values)
     keys = comp_hist.keys()
     for bin in range(int(min(keys)), int(max(keys))):
         print '%.3f: %s' % (bin_interval * bin,
                             int(comp_hist.get(bin,0.0) * scale) * "X")
     print
 
-    keys = lb_time_hist.keys()
-    for bin in range(int(min(keys)), int(max(keys))):
-        print '%.3f: %s' % (bin_interval * bin,
-                            int(lb_time_hist.get(bin,0.0) * scale) * "X")
-    print
+    #keys = lb_time_hist.keys()
+    #for bin in range(int(min(keys)), int(max(keys))):
+    #    print '%.3f: %s' % (bin_interval * bin,
+    #                        int(lb_time_hist.get(bin,0.0) * scale) * "X")
+    #print
 
     keys = total_time_hist.keys()
     for bin in range(int(min(keys)), int(max(keys))):
@@ -219,25 +223,25 @@ def RunExperiments(queryList, the_k_value):
 
         ### Initial Sorting Using LB  --- Mode = 1
         (rec1, res1) = SimSearch(queryid, 1, the_k_value)
-        print rec1
+        #print rec1
         recList1.append(rec1) 
     
         ### Initial Sorting Using LB' --- Mode = 2
         (rec2, res2) = SimSearch(queryid, 2, the_k_value)
-        print rec2
+        #print rec2
         recList2.append(rec2)
     
         ### Initial Sorting Using LB --- Mode = 1
         ### Re-sorting Using LB' --- Incremental
         (rec3, res3) = SimSearch(queryid, 1, the_k_value, True)
-        print rec3
+        #print rec3
         recList3.append(rec3)
     
         if (not CheckResults(res1,res2,res3)):
             print "Result Mismatch!"
             break;
 
-        time.sleep(.5)
+        time.sleep(0.1)
     
     queryRec1 = QueryStats()
     queryRec1.__computeAverage__(recList1)
@@ -253,11 +257,25 @@ def RunExperiments(queryList, the_k_value):
     return (queryRec1, queryRec2, queryRec3)
 
 def Experiment1_k_Values(queryList, min_k, max_k):
+    select_all_mbrs(DEFAULT_MBR_CNT)
     for k in range(min_k, max_k, min_k):
         (rec1,rec2,rec3) = RunExperiments(queryList, k)
         print "k", k, rec1
         print "k", k, rec2
         print "k", k, rec3
+
+def select_all_mbrs(mbr_cnt):
+    for (f, idx) in index_list:
+        idx.select_mbrs(mbr_cnt)
+
+def experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt):
+    for mbr_cnt in range(min_mbr_cnt, max_mbr_cnt, 20): #min_mbr_cnt):
+        print 'testing with %d MBRs' % (mbr_cnt,)
+        select_all_mbrs(mbr_cnt)
+        (rec1, rec2, rec3) = RunExperiments(queryList, DEFAULT_K)
+        print rec1
+        print rec2
+        print rec3
 
 ###
 ### Main Function.... well.... more precisely, the code fragment which controls this script
@@ -266,6 +284,7 @@ def Experiment1_k_Values(queryList, min_k, max_k):
 # Loading RTrees        
 
 def main():
+    print "Indexing %d pointsets" % (len(sys.argv) - 1,)
     for f in sys.argv[1:]:
         try:
             idx = Rtree(get_points(f), properties=p)
@@ -279,7 +298,10 @@ def main():
     min_k = 2
     max_k = 3
 
-    num_runs = 20 #len(index_list)
+    min_mbr_cnt = 20
+    max_mbr_cnt = 261
+
+    num_runs = 200 #len(index_list)
     queryList = []
 
     randseed = hash(datetime.datetime.now())
@@ -289,7 +311,8 @@ def main():
 
     queryList = random.sample(range(len(index_list)), num_runs)
 
-    Experiment1_k_Values(queryList, min_k, max_k)
+    #Experiment1_k_Values(queryList, min_k, max_k)
+    experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt)
 
 if __name__ == '__main__':
     main()
