@@ -541,7 +541,7 @@ class Index(object):
                                               p_traversal_cost,
                                               mode)
 
-        return (haus_dist, 
+        return (mhaus_dist, 
                 p_id1.contents.value, 
                 p_id2.contents.value,
                 p_traversal_cost.contents.value)
