@@ -512,39 +512,70 @@ class Index(object):
         return self._get_ids(it, p_num_results.contents.value)
 
     # Added by MDA
-    def hausdorff(self, other_index, mode):
+    def hausdorff(self, other_index, mode, direction="L"):
+        if direction.upper() not in ['L','R','MAX','MIN']:
+            raise Exception('Invalid hausdorff direction')
+
+        if direction == 'MAX':
+            return max(self.hausdorff(other_index, mode),
+                       other_index.hausdorff(self, mode))
+        elif direction == 'MIN':
+            return min(self.hausdorff(other_index, mode),
+                       other_index.hausdorff(self, mode))
+        elif direction == 'R':
+            return other_index.hausdorff(self, mode)
+
+
         p_id1 = ctypes.pointer(ctypes.c_uint64(0))
         p_id2 = ctypes.pointer(ctypes.c_uint64(0))
         p_traversal_cost = ctypes.pointer(ctypes.c_int(0))
+        p_num_dist_cals = ctypes.pointer(ctypes.c_int(0))
         
         haus_dist = core.rt.Index_Hausdorff(self.handle,
                                             other_index.handle,
                                             p_id1,
                                             p_id2,
                                             p_traversal_cost,
+                                            p_num_dist_cals,
                                             mode)
         
         return (haus_dist, 
                 p_id1.contents.value, 
                 p_id2.contents.value,
-                p_traversal_cost.contents.value)
+                p_traversal_cost.contents.value,
+                p_num_dist_cals.contents.value)
 
-    def mhausdorff(self, other_index, mode):
+    def mhausdorff(self, other_index, mode, direction="L"):
+        if direction.upper() not in ['L','R','MAX','MIN']:
+            raise Exception('Invalid hausdorff direction')
+
+        if direction == 'MAX':
+            return max(self.mhausdorff(other_index, mode),
+                       other_index.mhausdorff(self, mode))
+        elif direction == 'MIN':
+            return min(self.mhausdorff(other_index, mode),
+                       other_index.mhausdorff(self, mode))
+        elif direction == 'R':
+            return other_index.mhausdorff(self, mode)
+
         p_id1 = ctypes.pointer(ctypes.c_uint64(0))
         p_id2 = ctypes.pointer(ctypes.c_uint64(0))
         p_traversal_cost = ctypes.pointer(ctypes.c_int(0))
+        p_num_dist_cals = ctypes.pointer(ctypes.c_int(0))
         
         mhaus_dist = core.rt.Index_MHausdorff(self.handle,
                                               other_index.handle,
                                               p_id1,
                                               p_id2,
                                               p_traversal_cost,
+                                              p_num_dist_cals,
                                               mode)
 
         return (mhaus_dist, 
                 p_id1.contents.value, 
                 p_id2.contents.value,
-                p_traversal_cost.contents.value)
+                p_traversal_cost.contents.value,
+                p_num_dist_cals.contents.value)
 
     def select_mbrs(self, mbr_count):
         return core.rt.Index_SelectMBRs(self.handle, mbr_count)

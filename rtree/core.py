@@ -198,6 +198,7 @@ rt.Index_Hausdorff.argtypes = [ ctypes.c_void_p,
                                 ctypes.POINTER(ctypes.c_uint64),
                                 ctypes.POINTER(ctypes.c_uint64),
                                 ctypes.POINTER(ctypes.c_int),
+                                ctypes.POINTER(ctypes.c_int),
                                 ctypes.c_int]
 rt.Index_Hausdorff.restype = ctypes.c_double
 rt.Index_Hausdorff.errcheck = check_value
@@ -206,6 +207,7 @@ rt.Index_MHausdorff.argtypes = [ ctypes.c_void_p,
                                  ctypes.c_void_p,
                                  ctypes.POINTER(ctypes.c_uint64),
                                  ctypes.POINTER(ctypes.c_uint64),
+                                 ctypes.POINTER(ctypes.c_int),
                                  ctypes.POINTER(ctypes.c_int),
                                  ctypes.c_int]
 rt.Index_MHausdorff.restype = ctypes.c_double
