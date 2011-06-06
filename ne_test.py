@@ -134,18 +134,25 @@ def CheckResults(list1, list2, list3):
     return True
 
 
+def init_priority_queue(query_id, db, lb_mode):
+    (q_f, q) = db[queryId]
+    pq = []
+    for (f, pt_set) in db:
+        if (q_f != f):
+            (key, id1, id2) = max(q.hausdorff(pt_set, lb_mode), 
+                                  pt_set.hausdorff(q, lb_mode))
+            heapq.heappush(pq, (key, Entry(f, 0, key, pt_set)))
+    return pq
+
+
 def SimSearch(queryId, db, lbmode, k=1, inc=False):
   
-    t1 = datetime.datetime.now()
-    (q_f, q) = idx_list[queryId] 
+    (q_f, q) = db[queryId] 
     resultList = list()
-    pq = []
     haus = -1
-    for (f, pt_set) in db:
-        if (not(q_f.__eq__(f))):
-            (key, id1, id2) = max(q.hausdorff(pt_set, lbmode), pt_set.hausdorff(q, lbmode))
-            heapq.heappush(pq, (key, Entry(f, 0, key, pt_set)))
 
+    t1 = datetime.datetime.now()
+    pq = init_priority_queue(query_id, db, lbmode)
     t2 = datetime.datetime.now()
 
     lbtime = t2 - t1

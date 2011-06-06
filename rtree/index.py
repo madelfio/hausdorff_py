@@ -9,6 +9,8 @@ except ImportError:
 import os
 import os.path
 
+from collections import namedtuple
+
 
 RT_Memory = 0
 RT_Disk = 1
@@ -539,11 +541,14 @@ class Index(object):
                                             p_num_dist_cals,
                                             mode)
         
-        return (haus_dist, 
-                p_id1.contents.value, 
-                p_id2.contents.value,
-                p_traversal_cost.contents.value,
-                p_num_dist_cals.contents.value)
+        Info = namedtuple('Info',['point_id1', 'point_id2',
+                                  'traversal_cost', 'num_dist_cals'])
+        info = Info(p_id1.contents.value,
+                    p_id2.contents.value,
+                    p_traversal_cost.contents.value,
+                    p_num_dist_cals.contents.value)
+
+        return (haus_dist, info)
 
     def mhausdorff(self, other_index, mode, direction="L"):
         if direction.upper() not in ['L','R','MAX','MIN']:
@@ -571,11 +576,11 @@ class Index(object):
                                               p_num_dist_cals,
                                               mode)
 
-        return (mhaus_dist, 
-                p_id1.contents.value, 
-                p_id2.contents.value,
-                p_traversal_cost.contents.value,
-                p_num_dist_cals.contents.value)
+        Info = namedtuple('Info', ['traversal_cost', 'num_dist_cals'])
+        info = Info(p_traversal_cost.contents.value,
+                    p_num_dist_cals.contents.value)
+
+        return (mhaus_dist, info)
 
     def select_mbrs(self, mbr_count):
         return core.rt.Index_SelectMBRs(self.handle, mbr_count)

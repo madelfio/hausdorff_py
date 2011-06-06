@@ -6,7 +6,7 @@ import heapq
 import random
 
 if len(sys.argv) < 2:
-    print "Usage: ne_test.py <query_pt_set_file> <db_pt_set_file_1> <...>"
+    print "Usage: search_test.py <query_pt_set_file> <db_pt_set_file_1> <...>"
     exit()
 
 DEFAULT_K = 2
@@ -160,9 +160,9 @@ def init_priority_queue(query_id, lb_mode):
     num_dist_cals = 0
     for i in range(len(index_list)):
         if i != query_id:
-            (key, _, _, _, dc) = compute_hausdorff_by_id(query_id, i, lb_mode)
+            (key, info) = compute_hausdorff_by_id(query_id, i, lb_mode)
             heapq.heappush(pq, (key, Entry(index_list[i][0], 0, key, i)))
-            num_dist_cals += dc
+            num_dist_cals += info.num_dist_cals
     return (pq, num_dist_cals)
 
 
@@ -187,20 +187,20 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
 
         if (e.stage == 1 and inc):
             ta = datetime.datetime.now()
-            (e.key, _, _, dc, _) = compute_hausdorff_by_id(query_id, e.pt_set_id, 2)
+            (e.key, info) = compute_hausdorff_by_id(query_id, e.pt_set_id, 2)
             tb = datetime.datetime.now()
             lbtime = lbtime + (tb-ta)
             e.stage = 2
-            num_dist_cals += dc
+            num_dist_cals += info.num_dist_cals
             heapq.heappush(pq, (e.key, e))
         elif (e.stage == 3):
             resultList.append(e)
         else:
-            (e.haus, id1, _, tc, dc) = compute_hausdorff_by_id(query_id, e.pt_set_id, 0)
+            (e.haus, info) = compute_hausdorff_by_id(query_id, e.pt_set_id, 0)
             numComps += 1
             e.stage = 3
-            traversalCost += tc
-            num_dist_cals += dc
+            traversalCost += info.traversal_cost
+            num_dist_cals += info.num_dist_cals
             heapq.heappush(pq, (e.haus, e))
 
     t3 = datetime.datetime.now()

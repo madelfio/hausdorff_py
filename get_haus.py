@@ -23,32 +23,32 @@ idx2 = Rtree(get_points(sys.argv[2]), properties=p)
 idx1.select_mbrs(40);
 idx2.select_mbrs(40);
 
-print idx1.mhausdorff(idx2,1)
-print idx2.mhausdorff(idx1,1)
-print idx1.mhausdorff(idx2,2)
-print idx2.mhausdorff(idx1,2)
-print idx1.mhausdorff(idx2,0)
-print idx2.mhausdorff(idx1,0)
+print idx1.hausdorff(idx2,1)
+print idx2.hausdorff(idx1,1)
+print idx1.hausdorff(idx2,2)
+print idx2.hausdorff(idx1,2)
+print idx1.hausdorff(idx2,0)
+print idx2.hausdorff(idx1,0)
 print
 
 idx1.select_mbrs(80);
 idx2.select_mbrs(80);
 
-print idx1.mhausdorff(idx2,1)
-print idx2.mhausdorff(idx1,1)
-print idx1.mhausdorff(idx2,2)
-print idx2.mhausdorff(idx1,2)
-print idx1.mhausdorff(idx2,0)
-print idx2.mhausdorff(idx1,0)
+print idx1.hausdorff(idx2,1)
+print idx2.hausdorff(idx1,1)
+print idx1.hausdorff(idx2,2)
+print idx2.hausdorff(idx1,2)
+print idx1.hausdorff(idx2,0)
+print idx2.hausdorff(idx1,0)
 print
 
 idx1.select_mbrs(160);
 idx2.select_mbrs(160);
 
-print idx1.mhausdorff(idx2,1)
-print idx2.mhausdorff(idx1,1)
-print idx1.mhausdorff(idx2,2)
-print idx2.mhausdorff(idx1,2)
-print idx1.mhausdorff(idx2,0)
-print idx2.mhausdorff(idx1,0)
+print idx1.hausdorff(idx2,1)
+print idx2.hausdorff(idx1,1)
+print idx1.hausdorff(idx2,2)
+print idx2.hausdorff(idx1,2)
+print idx1.hausdorff(idx2,0)
+print idx2.hausdorff(idx1,0)
 print
