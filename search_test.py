@@ -154,9 +154,9 @@ def CheckResults(list1, list2, list3):
 
 def compute_hausdorff_by_id(id1, id2, lb_mode, one_way=True):
     if one_way:
-        return index_list[id1][1].hausdorff(index_list[id2][1], lb_mode)
-    return max(index_list[id1][1].hausdorff(index_list[id2][1], lb_mode),
-               index_list[id2][1].hausdorff(index_list[id1][1], lb_mode))
+        return index_list[id1][1].mhausdorff(index_list[id2][1], lb_mode)
+    return max(index_list[id1][1].mhausdorff(index_list[id2][1], lb_mode),
+               index_list[id2][1].mhausdorff(index_list[id1][1], lb_mode))
 
 def init_priority_queue(query_id, lb_mode):
     pq = []
