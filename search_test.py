@@ -67,10 +67,12 @@ class QueryStats:
                  totalTime=None, traversalCost=None, num_dist_cals=None):
         self.numComps = numComps
         self.numIterations = numIterations
-        if (lbTime is not None):
-            self.lbTime = lbTime.seconds*1000.0 + lbTime.microseconds/1000.0
-        if (totalTime is not None):
-            self.totalTime = totalTime.seconds*1000.0 + totalTime.microseconds/1000.0
+        self.lbTime=lbTime
+        self.totalTime=totalTime
+        #if (lbTime is not None):
+        #    self.lbTime = lbTime.seconds*1000.0 + lbTime.microseconds/1000.0
+        #if (totalTime is not None):
+        #    self.totalTime = totalTime.seconds*1000.0 + totalTime.microseconds/1000.0
         self.traversalCost=traversalCost
         self.num_dist_cals=num_dist_cals
             
@@ -90,7 +92,8 @@ def compute_dists (stat_list_lb, stat_list_elb):
         ratios.append(((1.0 * stat_elb.numIterations /
                         stat_lb.numIterations),
                        (1.0 * stat_elb.numComps / stat_lb.numComps),
-                       (stat_elb.lbTime / stat_lb.lbTime),
+                       (stat_elb.lbTime / stat_lb.lbTime +
+                        0.000000000001),
                        (stat_elb.totalTime / stat_lb.totalTime)))
 
     # put ratios into bins
@@ -157,21 +160,23 @@ def compute_hausdorff_by_id(id1, id2, lb_mode, one_way=True):
 
 def init_priority_queue(query_id, lb_mode):
     pq = []
+    lb_elap = 0
     num_dist_cals = 0
     for i in range(len(index_list)):
         if i != query_id:
             (key, info) = compute_hausdorff_by_id(query_id, i, lb_mode)
             heapq.heappush(pq, (key, Entry(index_list[i][0], 0, key, i)))
             num_dist_cals += info.num_dist_cals
-    return (pq, num_dist_cals)
+            lb_elap += info.elap
+    return (pq, lb_elap, num_dist_cals)
 
 
 def SimSearch(query_id, lbmode, k=1, inc=False):
  
     t1 = datetime.datetime.now()
-    (pq, num_dist_cals) = init_priority_queue(query_id, lbmode)
-    t2 = datetime.datetime.now()
-    lbtime = t2 - t1
+    (pq, lb_time, num_dist_cals) = init_priority_queue(query_id, lbmode)
+    #t2 = datetime.datetime.now()
+    #lbtime = t2 - t1
 
     if lbmode == -1:
         return
@@ -186,10 +191,10 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
         (key, e) = heapq.heappop(pq)
 
         if (e.stage == 1 and inc):
-            ta = datetime.datetime.now()
+            #ta = datetime.datetime.now()
             (e.key, info) = compute_hausdorff_by_id(query_id, e.pt_set_id, 2)
-            tb = datetime.datetime.now()
-            lbtime = lbtime + (tb-ta)
+            #tb = datetime.datetime.now()
+            lb_time = lb_time + info.elap #(tb-ta)
             e.stage = 2
             num_dist_cals += info.num_dist_cals
             heapq.heappush(pq, (e.key, e))
@@ -204,8 +209,10 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
             heapq.heappush(pq, (e.haus, e))
 
     t3 = datetime.datetime.now()
+    total_time = t3-t1
+    total_time = total_time.seconds * 1000.0 + total_time.microseconds / 1000.0
     
-    queryRec = QueryStats(numIterations, numComps, lbtime, t3-t1,
+    queryRec = QueryStats(numIterations, numComps, lb_time, total_time,
                           traversalCost, num_dist_cals)
     return (queryRec,resultList)
 
@@ -256,7 +263,7 @@ def RunExperiments(queryList, the_k_value):
     queryRec3 = QueryStats()
     queryRec3.__computeAverage__(recList3)
 
-    compute_dists(recList1, recList3)
+    #compute_dists(recList1, recList3)
 
     return (queryRec1, queryRec2, queryRec3)
 
@@ -273,7 +280,7 @@ def select_all_mbrs(mbr_cnt):
         idx.select_mbrs(mbr_cnt)
 
 def experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt):
-    for mbr_cnt in range(min_mbr_cnt, max_mbr_cnt, 10): #min_mbr_cnt):
+    for mbr_cnt in range(min_mbr_cnt, max_mbr_cnt, 20): #min_mbr_cnt):
         print 'testing with %d MBRs' % (mbr_cnt,)
         select_all_mbrs(mbr_cnt)
         (rec1, rec2, rec3) = RunExperiments(queryList, DEFAULT_K)
@@ -308,7 +315,7 @@ def main():
     num_runs = 10 #len(index_list)
     queryList = []
 
-    randseed = hash(datetime.datetime.now())
+    randseed = hash(datetime.datetime.now()) % 10000
     print "randseed = ", randseed
 
     random.seed(randseed)

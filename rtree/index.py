@@ -9,8 +9,12 @@ except ImportError:
 import os
 import os.path
 
+from datetime import datetime
 from collections import namedtuple
 
+Info = namedtuple('Info',['point_id1', 'point_id2',
+                          'traversal_cost', 'num_dist_cals',
+                          'elap'])
 
 RT_Memory = 0
 RT_Disk = 1
@@ -533,6 +537,7 @@ class Index(object):
         p_traversal_cost = ctypes.pointer(ctypes.c_int(0))
         p_num_dist_cals = ctypes.pointer(ctypes.c_int(0))
         
+        start_time = datetime.now()
         haus_dist = core.rt.Index_Hausdorff(self.handle,
                                             other_index.handle,
                                             p_id1,
@@ -540,13 +545,14 @@ class Index(object):
                                             p_traversal_cost,
                                             p_num_dist_cals,
                                             mode)
+        end_time = datetime.now()
+        elap = end_time-start_time
         
-        Info = namedtuple('Info',['point_id1', 'point_id2',
-                                  'traversal_cost', 'num_dist_cals'])
         info = Info(p_id1.contents.value,
                     p_id2.contents.value,
                     p_traversal_cost.contents.value,
-                    p_num_dist_cals.contents.value)
+                    p_num_dist_cals.contents.value,
+                    elap.seconds*1000.0 + elap.microseconds/1000.0)
 
         return (haus_dist, info)
 
@@ -568,6 +574,8 @@ class Index(object):
         p_traversal_cost = ctypes.pointer(ctypes.c_int(0))
         p_num_dist_cals = ctypes.pointer(ctypes.c_int(0))
         
+
+        start_time = datetime.now()
         mhaus_dist = core.rt.Index_MHausdorff(self.handle,
                                               other_index.handle,
                                               p_id1,
@@ -575,10 +583,13 @@ class Index(object):
                                               p_traversal_cost,
                                               p_num_dist_cals,
                                               mode)
+        end_time = datetime.now()
+        elap = end_time-start_time
 
-        Info = namedtuple('Info', ['traversal_cost', 'num_dist_cals'])
-        info = Info(p_traversal_cost.contents.value,
-                    p_num_dist_cals.contents.value)
+        info = Info(0,0,
+                    p_traversal_cost.contents.value,
+                    p_num_dist_cals.contents.value,
+                    elap.seconds*1000.0 + elap.microseconds/1000.0)
 
         return (mhaus_dist, info)
 
