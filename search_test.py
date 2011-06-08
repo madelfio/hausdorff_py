@@ -4,7 +4,8 @@ from rtree import Rtree, index
 import heapq
 import random
 
-
+#######################################
+# Accept and parse command line options
 from optparse import OptionParser
 usage = "Usage: %prog [options] query_pt_set_files"
 parser = OptionParser(usage=usage)
@@ -16,16 +17,24 @@ parser.add_option("--rand-seed", type="int", dest="rand_seed")
 parser.add_option("--pairwise", action="store_true", dest="pairwise",
                   default=True)
 parser.add_option("--nn-scan", action="store_false", dest="pairwise")
+
+parser.add_option("--min-mbrs", type="int", dest="min_mbrs", default=20)
+parser.add_option("--max-mbrs", type="int", dest="max_mbrs")
+parser.add_option("--mbr-step", type="int", dest="mbr_step", default=20)
 (options, args) = parser.parse_args()
 
 if len(args) < 1:
-    print "Usage: search_test.py <query_pt_set_file> <db_pt_set_file_1> <...>"
+    parser.error("query_pt_set_files are missing")
     exit()
 
 MHAUS = options.mhaus
 NUM_QUERIES = options.num_queries or 10
 DEFAULT_K = options.k or 2
 RAND_SEED = options.rand_seed or hash(datetime.datetime.now()) % 10000
+
+MIN_MBRS, MAX_MBRS, MBR_STEP = (options.min_mbrs, 
+                                options.max_mbrs,
+                                options.mbr_step)
 
 if options.pairwise:
     HAUSDORFF_MODE = 0
@@ -34,6 +43,7 @@ else:
 
 DEFAULT_MBR_CNT = 40
 
+#######################################
 
 p = index.Property()
 p.set_index_capacity(4)
@@ -66,6 +76,7 @@ class QueryStats:
     def __computeAverage__(self, statList):
         self.numComps = 0
         self.lbTime = 0
+        self.hausTime = 0
         self.totalTime = 0
         self.numIterations = 0
         self.traversalCost = 0
@@ -73,6 +84,7 @@ class QueryStats:
         for s in statList:
             self.numComps += s.numComps
             self.lbTime += s.lbTime
+            self.hausTime += s.hausTime
             self.totalTime += s.totalTime
             self.numIterations += s.numIterations
             self.traversalCost += s.traversalCost
@@ -80,31 +92,30 @@ class QueryStats:
             
         self.numComps /= len(statList)
         self.lbTime /= len(statList)
+        self.hausTime /= len(statList)
         self.totalTime /= len(statList)
         self.numIterations /= len(statList)
         self.traversalCost /= len(statList)
         self.num_dist_cals /= len(statList)
 
-    def __init__(self, numIterations=0, numComps=0, lbTime=None,
+    def __init__(self, numIterations=0, numComps=0, lbTime=None, hausTime=None,
                  totalTime=None, traversalCost=None, num_dist_cals=None):
         self.numComps = numComps
         self.numIterations = numIterations
         self.lbTime=lbTime
+        self.hausTime=hausTime
         self.totalTime=totalTime
-        #if (lbTime is not None):
-        #    self.lbTime = lbTime.seconds*1000.0 + lbTime.microseconds/1000.0
-        #if (totalTime is not None):
-        #    self.totalTime = totalTime.seconds*1000.0 + totalTime.microseconds/1000.0
         self.traversalCost=traversalCost
         self.num_dist_cals=num_dist_cals
             
     def __repr__(self):
-        return ', '.join(("NumIterations: %3d" % (self.numIterations,),
-                          "NumComps: %3d" % (self.numComps,),
+        return ', '.join(("NumIterations: %4d" % (self.numIterations,),
+                          "NumComps: %4d" % (self.numComps,),
                           "lbTime: %8.3f" % (self.lbTime,),
-                          "totalTime: %8.3f" % (self.totalTime,),
+                          "hausTime: %9.3f" % (self.hausTime,),
+                          "totalTime: %9.3f" % (self.totalTime,),
                           "traversalCost: %d" % (self.traversalCost,),
-                          "num_dist_cals: %d" % (self.num_dist_cals,)
+                          "num_dist_cals: %9d" % (self.num_dist_cals,)
                          ))
 
 
@@ -210,6 +221,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
     numComps = 0
     numIterations = 0
     traversalCost = 0
+    haus_time = 0
     while (len(pq) > 0 and len(resultList) < k):
         numIterations += 1
         (key, id, e) = heapq.heappop(pq)
@@ -228,6 +240,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
             (e.haus, info) = compute_hausdorff_by_id(query_id, e.pt_set_id,
                                                      HAUSDORFF_MODE)
             numComps += 1
+            haus_time += info.elap
             e.stage = 3
             traversalCost += info.traversal_cost
             num_dist_cals += info.num_dist_cals
@@ -237,7 +250,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
     total_time = t3-t1
     total_time = total_time.seconds * 1000.0 + total_time.microseconds / 1000.0
     
-    queryRec = QueryStats(numIterations, numComps, lb_time, total_time,
+    queryRec = QueryStats(numIterations, numComps, lb_time, haus_time, total_time,
                           traversalCost, num_dist_cals)
     return (queryRec,resultList)
 
@@ -304,8 +317,8 @@ def select_all_mbrs(mbr_cnt):
     for (f, idx) in index_list:
         idx.select_mbrs(mbr_cnt)
 
-def experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt):
-    for mbr_cnt in range(min_mbr_cnt, max_mbr_cnt, 20): #min_mbr_cnt):
+def experiment2_mbr_count(queryList):
+    for mbr_cnt in range(MIN_MBRS, MAX_MBRS + 1, MBR_STEP):
         print 'testing with %d MBRs' % (mbr_cnt,)
         select_all_mbrs(mbr_cnt)
         (rec1, rec2, rec3) = RunExperiments(queryList, DEFAULT_K)
@@ -335,10 +348,6 @@ def main():
     min_k = 2
     max_k = 3
 
-    min_mbr_cnt = 20
-    max_mbr_cnt = 121
-
-
     num_queries = NUM_QUERIES #len(index_list)
     queryList = []
 
@@ -352,7 +361,7 @@ def main():
     queryList = random.sample(range(len(index_list)), num_queries)
 
     #Experiment1_k_Values(queryList, min_k, max_k)
-    experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt)
+    experiment2_mbr_count(queryList)
 
 if __name__ == '__main__':
     main()
