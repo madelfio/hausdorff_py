@@ -21,6 +21,13 @@ parser.add_option("--nn-scan", action="store_false", dest="pairwise")
 parser.add_option("--min-mbrs", type="int", dest="min_mbrs", default=20)
 parser.add_option("--max-mbrs", type="int", dest="max_mbrs")
 parser.add_option("--mbr-step", type="int", dest="mbr_step", default=20)
+
+parser.add_option("--min-k", type="int", dest="min_k", default=20)
+parser.add_option("--max-k", type="int", dest="max_k")
+parser.add_option("--k-step", type="int", dest="k_step", default=20)
+
+parser.add_option("-x", "--experiment-number", type="int", dest="exp_num",
+                  default=1)
 (options, args) = parser.parse_args()
 
 if len(args) < 1:
@@ -36,12 +43,16 @@ MIN_MBRS, MAX_MBRS, MBR_STEP = (options.min_mbrs,
                                 options.max_mbrs,
                                 options.mbr_step)
 
+MIN_K, MAX_K, K_STEP = (options.min_k, options.max_k, options.k_step) 
+
+EXP_NUM = options.exp_num
+
 if options.pairwise:
     HAUSDORFF_MODE = 0
 else:
     HAUSDORFF_MODE = -1
 
-DEFAULT_MBR_CNT = 40
+DEFAULT_MBR_CNT = MIN_MBRS
 
 #######################################
 
@@ -118,57 +129,6 @@ class QueryStats:
                           "num_dist_cals: %9d" % (self.num_dist_cals,)
                          ))
 
-
-def compute_dists (stat_list_lb, stat_list_elb):
-    ratios = []
-    for (stat_lb, stat_elb) in zip(stat_list_lb, stat_list_elb):
-        ratios.append(((1.0 * stat_elb.numIterations /
-                        stat_lb.numIterations),
-                       (1.0 * stat_elb.numComps / stat_lb.numComps),
-                       (stat_elb.lbTime / stat_lb.lbTime +
-                        0.000000000001),
-                       (stat_elb.totalTime / stat_lb.totalTime)))
-
-    # put ratios into bins
-    iter_hist = {}
-    comp_hist = {}
-    lb_time_hist = {}
-    total_time_hist = {}
-    bin_interval = 0.025
-
-    for iter, comp, lb_time, total_time in ratios:
-        iter_bin = round(iter/bin_interval)
-        comp_bin = round(comp/bin_interval)
-        lb_time_bin = round(lb_time/bin_interval)
-        total_time_bin = round(total_time/bin_interval)
-
-        iter_hist[iter_bin] = iter_hist.get(iter_bin, 0) + 1
-        comp_hist[comp_bin] = comp_hist.get(comp_bin, 0) + 1
-        lb_time_hist[lb_time_bin] = lb_time_hist.get(lb_time_bin, 0) + 1
-        total_time_hist[total_time_bin] = total_time_hist.get(total_time_bin, 0) + 1
-
-    scale = 200.0 / len(ratios) #(200 "X"s to represent the values)
-    keys = comp_hist.keys()
-    for bin in range(int(min(keys)), int(max(keys))):
-        print '%.3f: %s' % (bin_interval * bin,
-                            int(comp_hist.get(bin,0.0) * scale) * "X")
-    print
-
-    #keys = lb_time_hist.keys()
-    #for bin in range(int(min(keys)), int(max(keys))):
-    #    print '%.3f: %s' % (bin_interval * bin,
-    #                        int(lb_time_hist.get(bin,0.0) * scale) * "X")
-    #print
-
-    keys = total_time_hist.keys()
-    for bin in range(int(min(keys)), int(max(keys))):
-        print '%.3f: %s' % (bin_interval * bin,
-                            int(total_time_hist.get(bin,0.0) * scale) * "X")
-    print
-
-        
-
-
 def floateq(a,b):
     if a == b == 0:
         return True
@@ -208,10 +168,8 @@ def init_priority_queue(query_id, lb_mode):
 
 def SimSearch(query_id, lbmode, k=1, inc=False):
  
-    t1 = datetime.datetime.now()
+    start_time = datetime.datetime.now()
     (pq, lb_time, num_dist_cals) = init_priority_queue(query_id, lbmode)
-    #t2 = datetime.datetime.now()
-    #lbtime = t2 - t1
 
     if lbmode == -1:
         return
@@ -246,8 +204,8 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
             num_dist_cals += info.num_dist_cals
             heapq.heappush(pq, (e.haus, e.pt_set_id, e))
 
-    t3 = datetime.datetime.now()
-    total_time = t3-t1
+    end_time = datetime.datetime.now()
+    total_time = end_time - start_time
     total_time = total_time.seconds * 1000.0 + total_time.microseconds / 1000.0
     
     queryRec = QueryStats(numIterations, numComps, lb_time, haus_time, total_time,
@@ -301,23 +259,13 @@ def RunExperiments(queryList, the_k_value):
     queryRec3 = QueryStats()
     queryRec3.__computeAverage__(recList3)
 
-    #compute_dists(recList1, recList3)
-
     return (queryRec1, queryRec2, queryRec3)
-
-def Experiment1_k_Values(queryList, min_k, max_k):
-    select_all_mbrs(DEFAULT_MBR_CNT)
-    for k in range(min_k, max_k, min_k):
-        (rec1,rec2,rec3) = RunExperiments(queryList, k)
-        print "k", k, rec1
-        print "k", k, rec2
-        print "k", k, rec3
 
 def select_all_mbrs(mbr_cnt):
     for (f, idx) in index_list:
         idx.select_mbrs(mbr_cnt)
 
-def experiment2_mbr_count(queryList):
+def experiment1_mbr_count(queryList):
     for mbr_cnt in range(MIN_MBRS, MAX_MBRS + 1, MBR_STEP):
         print 'testing with %d MBRs' % (mbr_cnt,)
         select_all_mbrs(mbr_cnt)
@@ -326,6 +274,70 @@ def experiment2_mbr_count(queryList):
         print rec2
         print rec3
         print
+
+def experiment2_k_Values(queryList):
+    select_all_mbrs(DEFAULT_MBR_CNT)
+    for k in range(MIN_K, MAX_K + 1, K_STEP):
+        (rec1,rec2,rec3) = RunExperiments(queryList, k)
+        print "k", k, rec1
+        print "k", k, rec2
+        print "k", k, rec3
+
+def experiment3_enh_lb_stats(queryPairs):
+    select_all_mbrs(MIN_MBRS)
+    print 'Using %d MBRs' % (MIN_MBRS,)
+    for (idx1, idx2) in queryPairs:
+        print 'From %s to %s:' % (index_list[idx1][0],
+                                  index_list[idx2][0])
+        (lb, elb, haus) = (compute_hausdorff_by_id(idx1, idx2, mode)
+                           for mode in [1,2,0])
+        print '%10.6f, %10.6f, %10.6f' % (lb[0]/1000.0, elb[0]/1000.0,
+                                          haus[0]/1000.0)
+        print '  (LB:   %r)' % (lb,)
+        print '  (ELB:  %r)' % (elb,)
+        print '  (HAUS: %r)' % (haus,)
+
+def experiment4_enh_lb_stats(query_list):
+    select_all_mbrs(MIN_MBRS)
+    print 'Using %d MBRs' % (MIN_MBRS,)
+
+    # for each pointset in index_list:
+    #   compute lb, elb, haus
+    # sort list by lb/elb/haus(?)
+    # print sorted list with ranks
+
+    full_results = []
+    for query_id in query_list:
+        results = []
+        for i in range(len(index_list)):
+            if i != query_id:
+                (lb, info) = compute_hausdorff_by_id(query_id, i, 1)
+                (elb, info) = compute_hausdorff_by_id(query_id, i, 2)
+                (haus, info) = compute_hausdorff_by_id(query_id, i, 0)
+                #results.append((lb/1000.0, elb/1000.0, haus/1000.0))
+                if haus == 0:
+                    #results.append((0.0,0.0,1.0))
+                    results.append((haus,0.0,0.0))
+                else:
+                    #results.append((lb/haus, elb/haus, 1.0))
+                    results.append((haus, lb/haus, elb/haus))
+
+        results.sort()
+        full_results.append(results)
+
+    r = [(0,0,0)] * (len(index_list) - 1)
+    for i in range(len(query_list)):
+        for j in range(len(index_list) - 1):
+            a = r[j]
+            b = full_results[i][j]
+            r[j] = (a[0] + b[0], a[1] + b[1], a[2] + b[2])
+
+    x = len(full_results)
+    r = [(a/x, b/x, c/x) for (a,b,c) in r]
+
+    print '\n'.join("%d, %10.6f, %10.6f, %10.6f" % (i, lb, elb, haus) 
+                    for (i, (lb, elb, haus)) in enumerate(r))
+        
 
 ###
 ### Main Function.... well.... more precisely, the code fragment which controls this script
@@ -360,8 +372,17 @@ def main():
 
     queryList = random.sample(range(len(index_list)), num_queries)
 
-    #Experiment1_k_Values(queryList, min_k, max_k)
-    experiment2_mbr_count(queryList)
+    if EXP_NUM == 1:
+        experiment1_mbr_count(queryList)
+    elif EXP_NUM == 2:
+        experiment2_k_Values(queryList)
+    elif EXP_NUM == 3:
+        queryPairs = random.sample(range(len(index_list)), num_queries)
+        queryPairs = zip(queryPairs[::2], queryPairs[1::2])
+        experiment3_enh_lb_stats(queryPairs)
+    elif EXP_NUM == 4:
+        query_list = random.sample(range(len(index_list)), num_queries)
+        experiment4_enh_lb_stats(query_list)
 
 if __name__ == '__main__':
     main()
