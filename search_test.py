@@ -165,7 +165,7 @@ def init_priority_queue(query_id, lb_mode):
     for i in range(len(index_list)):
         if i != query_id:
             (key, info) = compute_hausdorff_by_id(query_id, i, lb_mode)
-            heapq.heappush(pq, (key, Entry(index_list[i][0], 0, key, i)))
+            heapq.heappush(pq, (key, i, Entry(index_list[i][0], 0, key, i)))
             num_dist_cals += info.num_dist_cals
             lb_elap += info.elap
     return (pq, lb_elap, num_dist_cals)
@@ -188,7 +188,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
     traversalCost = 0
     while (len(pq) > 0 and len(resultList) < k):
         numIterations += 1
-        (key, e) = heapq.heappop(pq)
+        (key, id, e) = heapq.heappop(pq)
 
         if (e.stage == 1 and inc):
             #ta = datetime.datetime.now()
@@ -197,7 +197,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
             lb_time = lb_time + info.elap #(tb-ta)
             e.stage = 2
             num_dist_cals += info.num_dist_cals
-            heapq.heappush(pq, (e.key, e))
+            heapq.heappush(pq, (e.key, e.pt_set_id, e))
         elif (e.stage == 3):
             resultList.append(e)
         else:
@@ -206,7 +206,7 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
             e.stage = 3
             traversalCost += info.traversal_cost
             num_dist_cals += info.num_dist_cals
-            heapq.heappush(pq, (e.haus, e))
+            heapq.heappush(pq, (e.haus, e.pt_set_id, e))
 
     t3 = datetime.datetime.now()
     total_time = t3-t1
@@ -230,7 +230,7 @@ def RunExperiments(queryList, the_k_value):
 
 
         ### Test run to "warm up" the caches
-        SimSearch(queryid, -1, the_k_value)
+        #SimSearch(queryid, -2, the_k_value)
 
         ### Initial Sorting Using LB  --- Mode = 1
         (rec1, res1) = SimSearch(queryid, 1, the_k_value)
@@ -312,10 +312,11 @@ def main():
     min_mbr_cnt = 20
     max_mbr_cnt = 121
 
-    num_runs = 10 #len(index_list)
+    num_runs = 5 #len(index_list)
     queryList = []
 
-    randseed = hash(datetime.datetime.now()) % 10000
+    randseed = 1879 #hash(datetime.datetime.now()) % 10000
+	
     print "randseed = ", randseed
 
     random.seed(randseed)
