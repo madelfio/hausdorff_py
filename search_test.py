@@ -1,15 +1,37 @@
-import sys
 import datetime
 import time
 from rtree import Rtree, index
 import heapq
 import random
 
-if len(sys.argv) < 2:
+
+from optparse import OptionParser
+usage = "Usage: %prog [options] query_pt_set_files"
+parser = OptionParser(usage=usage)
+parser.add_option("-m", "--mhaus", action="store_true", dest="mhaus",
+                  default=False)
+parser.add_option("-n", "--num_queries", type="int", dest="num_queries")
+parser.add_option("-k", type="int", dest="k")
+parser.add_option("--rand-seed", type="int", dest="rand_seed")
+parser.add_option("--pairwise", action="store_true", dest="pairwise",
+                  default=True)
+parser.add_option("--nn-scan", action="store_false", dest="pairwise")
+(options, args) = parser.parse_args()
+
+if len(args) < 1:
     print "Usage: search_test.py <query_pt_set_file> <db_pt_set_file_1> <...>"
     exit()
 
-DEFAULT_K = 2
+MHAUS = options.mhaus
+NUM_QUERIES = options.num_queries or 10
+DEFAULT_K = options.k or 2
+RAND_SEED = options.rand_seed or hash(datetime.datetime.now()) % 10000
+
+if options.pairwise:
+    HAUSDORFF_MODE = 0
+else:
+    HAUSDORFF_MODE = -1
+
 DEFAULT_MBR_CNT = 40
 
 
@@ -152,11 +174,13 @@ def CheckResults(list1, list2, list3):
             return False
     return True
 
-def compute_hausdorff_by_id(id1, id2, lb_mode, one_way=True):
-    if one_way:
+
+def compute_hausdorff_by_id(id1, id2, lb_mode):
+    if MHAUS:
         return index_list[id1][1].mhausdorff(index_list[id2][1], lb_mode)
-    return max(index_list[id1][1].mhausdorff(index_list[id2][1], lb_mode),
-               index_list[id2][1].mhausdorff(index_list[id1][1], lb_mode))
+    else:
+        return index_list[id1][1].hausdorff(index_list[id2][1], lb_mode)
+
 
 def init_priority_queue(query_id, lb_mode):
     pq = []
@@ -201,7 +225,8 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
         elif (e.stage == 3):
             resultList.append(e)
         else:
-            (e.haus, info) = compute_hausdorff_by_id(query_id, e.pt_set_id, 0)
+            (e.haus, info) = compute_hausdorff_by_id(query_id, e.pt_set_id,
+                                                     HAUSDORFF_MODE)
             numComps += 1
             e.stage = 3
             traversalCost += info.traversal_cost
@@ -287,6 +312,7 @@ def experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt):
         print rec1
         print rec2
         print rec3
+        print
 
 ###
 ### Main Function.... well.... more precisely, the code fragment which controls this script
@@ -295,8 +321,8 @@ def experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt):
 # Loading RTrees        
 
 def main():
-    print "Indexing %d pointsets" % (len(sys.argv) - 1,)
-    for f in sys.argv[1:]:
+    print "Indexing %d pointsets" % (len(args) - 1,)
+    for f in args:
         try:
             idx = Rtree(get_points(f), properties=p)
         except:
@@ -312,16 +338,18 @@ def main():
     min_mbr_cnt = 20
     max_mbr_cnt = 121
 
-    num_runs = 5 #len(index_list)
+
+    num_queries = NUM_QUERIES #len(index_list)
     queryList = []
 
-    randseed = 1879 #hash(datetime.datetime.now()) % 10000
-	
+    randseed = RAND_SEED
+
+
     print "randseed = ", randseed
 
     random.seed(randseed)
 
-    queryList = random.sample(range(len(index_list)), num_runs)
+    queryList = random.sample(range(len(index_list)), num_queries)
 
     #Experiment1_k_Values(queryList, min_k, max_k)
     experiment2_mbr_count(queryList, min_mbr_cnt, max_mbr_cnt)
