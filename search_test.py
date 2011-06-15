@@ -3,6 +3,7 @@ import time
 from rtree import Rtree, index
 import heapq
 import random
+import mmap
 
 #######################################
 # Accept and parse command line options
@@ -61,6 +62,7 @@ p.set_index_capacity(4)
 p.set_leaf_capacity(10)
 
 index_list = []
+point_count = {}
 
 def print_time():
     print datetime.datetime.now()
@@ -70,7 +72,16 @@ def get_points(filename):
         x,y = l.split()
         x,y = 1000*float(x), 1000*float(y)
         yield (id, (x,y,x,y), None)
-        
+
+
+def mapcount(filename):
+    f = open(filename, "r+")
+    buf = mmap.mmap(f.fileno(), 0)
+    lines = 0
+    readline = buf.readline
+    while readline():
+        lines += 1
+    return lines
         
 class Entry:
     def __init__(self, fname, haus, key, pt_set_id, stage=1):
@@ -213,13 +224,13 @@ def SimSearch(query_id, lbmode, k=1, inc=False):
     return (queryRec,resultList)
 
 
-def RunExperiments(queryList, the_k_value):
+def RunExperiments(query_list, the_k_value):
 
     recList1 = []
     recList2 = []
     recList3 = []
 
-    for queryid in queryList:  
+    for queryid in query_list:  
 
         print "k value:", the_k_value, 
         print ": Searching for closest point set to: %s" % (index_list[queryid][0],)
@@ -265,20 +276,20 @@ def select_all_mbrs(mbr_cnt):
     for (f, idx) in index_list:
         idx.select_mbrs(mbr_cnt)
 
-def experiment1_mbr_count(queryList):
+def experiment1_mbr_count(query_list):
     for mbr_cnt in range(MIN_MBRS, MAX_MBRS + 1, MBR_STEP):
         print 'testing with %d MBRs' % (mbr_cnt,)
         select_all_mbrs(mbr_cnt)
-        (rec1, rec2, rec3) = RunExperiments(queryList, DEFAULT_K)
+        (rec1, rec2, rec3) = RunExperiments(query_list, DEFAULT_K)
         print rec1
         print rec2
         print rec3
         print
 
-def experiment2_k_Values(queryList):
+def experiment2_k_Values(query_list):
     select_all_mbrs(DEFAULT_MBR_CNT)
     for k in range(MIN_K, MAX_K + 1, K_STEP):
-        (rec1,rec2,rec3) = RunExperiments(queryList, k)
+        (rec1,rec2,rec3) = RunExperiments(query_list, k)
         print "k", k, rec1
         print "k", k, rec2
         print "k", k, rec3
@@ -338,6 +349,65 @@ def experiment4_enh_lb_stats(query_list):
     print '\n'.join("%d, %10.6f, %10.6f, %10.6f" % (i, lb, elb, haus) 
                     for (i, (lb, elb, haus)) in enumerate(r))
         
+def experiment5_perf_histogram(query_list):
+    select_all_mbrs(MIN_MBRS)
+    print 'Using %d MBRs' % (MIN_MBRS,)
+
+    # for each pointset in query_list:
+    #   perform sim_search using BscLB, EnhLB, HybLB
+    #   print # points in set, reduction in total time and # dist comps
+
+    the_k_value = 1
+
+    for queryid in query_list:  
+
+        print "k value:", the_k_value, 
+        print ": Searching for closest point set to: %s" % (index_list[queryid][0],)
+
+
+        ### Test run to "warm up" the caches
+        #SimSearch(queryid, -2, the_k_value)
+
+        ### Initial Sorting Using LB  --- Mode = 1
+        (rec1, res1) = SimSearch(queryid, 1, the_k_value)
+        print rec1
+        #recList1.append(rec1) 
+    
+        ### Initial Sorting Using LB' --- Mode = 2
+        (rec2, res2) = SimSearch(queryid, 2, the_k_value)
+        print rec2
+        #recList2.append(rec2)
+    
+        ### Initial Sorting Using LB --- Mode = 1
+        ### Re-sorting Using LB' --- Incremental
+        (rec3, res3) = SimSearch(queryid, 1, the_k_value, True)
+        print rec3
+        #recList3.append(rec3)
+    
+        if (not CheckResults(res1,res2,res3)):
+            print "Result Mismatch!"
+            break;
+
+        summary = 'SUMMARY (%6d points) ' \
+                  'BscLB: %9.3f, %9d, %4d ' \
+                  'EnhLB: %9.3f, %9d, %4d ' \
+                  'HybLB: %9.3f, %9d, %4d'
+
+        print summary % (point_count[queryid],
+                         rec1.totalTime, rec1.num_dist_cals, rec1.numComps,
+                         rec2.totalTime, rec2.num_dist_cals, rec2.numComps,
+                         rec3.totalTime, rec3.num_dist_cals, rec3.numComps)
+
+        summary = '9999.5 %6d ' \
+                  '%9.3f %9d %4d ' \
+                  '%9.3f %9d %4d ' \
+                  '%9.3f %9d %4d'
+
+        print summary % (point_count[queryid],
+                         rec1.totalTime, rec1.num_dist_cals, rec1.numComps,
+                         rec2.totalTime, rec2.num_dist_cals, rec2.numComps,
+                         rec3.totalTime, rec3.num_dist_cals, rec3.numComps)
+
 
 ###
 ### Main Function.... well.... more precisely, the code fragment which controls this script
@@ -354,35 +424,31 @@ def main():
             print "Error reading file: %s" % (f,)
             raise
         index_list.append((f,idx))
+        point_count[len(index_list) - 1] = mapcount(f) 
 
     print "Done building DB index"
 
     min_k = 2
     max_k = 3
 
-    num_queries = NUM_QUERIES #len(index_list)
-    queryList = []
-
     randseed = RAND_SEED
-
-
     print "randseed = ", randseed
-
     random.seed(randseed)
 
-    queryList = random.sample(range(len(index_list)), num_queries)
+    num_queries = NUM_QUERIES
+    query_list = random.sample(range(len(index_list)), num_queries)
 
     if EXP_NUM == 1:
-        experiment1_mbr_count(queryList)
+        experiment1_mbr_count(query_list)
     elif EXP_NUM == 2:
-        experiment2_k_Values(queryList)
+        experiment2_k_Values(query_list)
     elif EXP_NUM == 3:
-        queryPairs = random.sample(range(len(index_list)), num_queries)
-        queryPairs = zip(queryPairs[::2], queryPairs[1::2])
+        queryPairs = zip(query_list[::2], query_list[1::2])
         experiment3_enh_lb_stats(queryPairs)
     elif EXP_NUM == 4:
-        query_list = random.sample(range(len(index_list)), num_queries)
         experiment4_enh_lb_stats(query_list)
+    elif EXP_NUM == 5:
+        experiment5_perf_histogram(query_list)
 
 if __name__ == '__main__':
     main()
