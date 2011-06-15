@@ -4,3 +4,6 @@ python search_test.py -x 1 -n 100 -k 1 --pairwise --min-mbrs=20 --max-mbrs=240 -
 echo
 echo "Experiment 2"
 python search_test.py -x 2 -n 100 --min-k=1 --max-k=19 --k-step=2 --pairwise --min-mbrs=120 --rand-seed=1 ~/live_buckets/na_300_plus/*.txt
+echo
+echo "Experiment 3"
+python search_test.py -x 5 -n 100 -k 1 --pairwise --min-mbrs=140 --rand-seed=1 ~/live_buckets/na_300_plus/*.txt
