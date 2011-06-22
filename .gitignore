@@ -6,3 +6,6 @@ tags
 *.pyc
 
 .project/
+
+*test_results*?txt
+*test_results*?dat
