@@ -586,7 +586,8 @@ class Index(object):
         end_time = datetime.now()
         elap = end_time-start_time
 
-        info = Info(0,0,
+        info = Info(p_id1.contents.value,
+                    p_id2.contents.value,
                     p_traversal_cost.contents.value,
                     p_num_dist_cals.contents.value,
                     elap.seconds*1000.0 + elap.microseconds/1000.0)
